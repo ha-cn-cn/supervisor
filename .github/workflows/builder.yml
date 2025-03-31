@@ -210,8 +210,8 @@ jobs:
           # 完整镜像路径
           ALIYUN_VERSION="${ALIYUN_BASE}/${BASE_NAME}:${{ needs.init.outputs.version }}"
           ALIYUN_LATEST="${ALIYUN_BASE}/${BASE_NAME}:latest"
-          echo $ALIYUN_VERSION
-          echo "$ALIYUN_LATEST"
+          echo ${ALIYUN_VERSION}
+          echo "${ALIYUN_LATEST}"
           # 重新标记镜像
           docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_VERSION
           docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_LATEST
