@@ -181,6 +181,16 @@ jobs:
         env:
           CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
 
+
+# 获取构建的镜像标签
+      - name: Get built image tag
+        id: get_image_tag
+        run: |
+          # 从构建器输出中提取镜像标签
+          IMAGE_TAG=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "ghcr.io" | head -1)
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "Extracted image tag: ${IMAGE_TAG}"
+
       # 登录阿里云容器镜像服务
       - name: Login to Aliyun Container Registry
         uses: docker/login-action@v3.3.0
@@ -192,30 +202,32 @@ jobs:
       # 重新标记镜像为阿里云镜像格式
       - name: Retag image for Aliyun
         run: |
-          # 从构建器获取生成的镜像标签
-          IMAGE_TAG=$(cat /tmp/builder_tags | grep -m 1 -oP 'ghcr.io/.*')
-          echo '$IMAGE_TAG'
-          # 提取镜像名称部分
-          # 提取镜像名称部分（去掉ghcr.io/前缀）
-          IMAGE_NAME=$(echo $IMAGE_TAG | cut -d'/' -f2-)
+          # 阿里云镜像路径
+          ALIYUN_BASE="registry.cn-hangzhou.aliyuncs.com/smart-assistant"
+          IMAGE_NAME=$(echo "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" | cut -d'/' -f2-)
           BASE_NAME=$(echo $IMAGE_NAME | cut -d':' -f1)
-          echo '$IMAGE_NAME'
-          echo '$BASE_NAME'
-          # 阿里云镜像完整路径（使用smart-assistant命名空间）
-          ALIYUN_IMAGE="registry.cn-hangzhou.aliyuncs.com/smart-assistant/${BASE_NAME#*/}"
-          ALIYUN_LATEST="${ALIYUN_IMAGE}:latest"
-          ALIYUN_VERSION="${ALIYUN_IMAGE}:${{ needs.init.outputs.version }}"
-          echo '$ALIYUN_IMAGE'
-          echo '$ALIYUN_LATEST'
-          echo '$ALIYUN_VERSION'
+          
+          # 完整镜像路径
+          ALIYUN_VERSION="${ALIYUN_BASE}/${BASE_NAME}:${{ needs.init.outputs.version }}"
+          ALIYUN_LATEST="${ALIYUN_BASE}/${BASE_NAME}:latest"
+          echo $ALIYUN_VERSION
+          echo "$ALIYUN_LATEST"
           # 重新标记镜像
-          docker tag $IMAGE_TAG $ALIYUN_IMAGE
-
-          # 重新标记镜像（版本标签和latest标签）
-          docker tag $IMAGE_TAG $ALIYUN_VERSION
-          docker tag $IMAGE_TAG $ALIYUN_LATEST
-
-          docker images
+          docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_VERSION
+          docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_LATEST
+          
+          # 保存变量
+          echo "ALIYUN_VERSION=${ALIYUN_VERSION}" >> $GITHUB_ENV
+          echo "ALIYUN_LATEST=${ALIYUN_LATEST}" >> $GITHUB_ENV
+          
+            # 推送镜像到阿里云
+      - name: Push to Aliyun ACR
+        run: |
+          echo "Pushing version tag: ${ALIYUN_VERSION}"
+          docker push ${ALIYUN_VERSION}
+          
+          echo "Pushing latest tag: ${ALIYUN_LATEST}"
+          docker push ${ALIYUN_LATEST}
 
   version:
     name: Update version
