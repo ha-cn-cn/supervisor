@@ -201,18 +201,14 @@ jobs:
 
       # 重新标记镜像为阿里云镜像格式
       - name: Retag image for Aliyun
-        env:
-          ALIYUN_ACR: "${{ secrets.ALIYUN_ACR }}"
-          ALIYUN_ACR_NAME: "${{ secrets.ALIYUN_ACR_NAME }}"
         run: |
           # 阿里云镜像路径
-          ALIYUN_BASE="$ALIYUN_ACR/$ALIYUN_ACR_NAME"
+          ALIYUN_BASE="registry.cn-hangzhou.aliyuncs.com/smart-assistant"
           
           # 完整镜像路径
           ALIYUN_VERSION="${ALIYUN_BASE}/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}"
           ALIYUN_LATEST="${ALIYUN_BASE}/${{ matrix.arch }}-hassio-supervisor:latest"
-          ${ALIYUN_VERSION}
-          "${ALIYUN_LATEST}"
+
           # 重新标记镜像
           docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_VERSION
           docker tag "${{ steps.get_image_tag.outputs.IMAGE_TAG }}" $ALIYUN_LATEST
