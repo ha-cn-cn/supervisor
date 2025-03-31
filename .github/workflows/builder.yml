@@ -181,6 +181,42 @@ jobs:
         env:
           CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
 
+      # 登录阿里云容器镜像服务
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ secrets.ALIYUN_ACR }} # registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALIYUN_ACR_USERNAME }} # 阿里云RAM用户
+          password: ${{ secrets.ALIYUN_ACR_PASSWORD }} # 建议使用临时令牌
+
+      # 重新标记镜像为阿里云镜像格式
+      - name: Retag image for Aliyun
+        run: |
+          # 从构建器获取生成的镜像标签
+          IMAGE_TAG=$(cat /tmp/builder_tags | grep -m 1 -oP 'ghcr.io/.*')
+          echo '$IMAGE_TAG'
+          # 提取镜像名称部分
+          # 提取镜像名称部分（去掉ghcr.io/前缀）
+          IMAGE_NAME=$(echo $IMAGE_TAG | cut -d'/' -f2-)
+          BASE_NAME=$(echo $IMAGE_NAME | cut -d':' -f1)
+          echo '$IMAGE_NAME'
+          echo '$BASE_NAME'
+          # 阿里云镜像完整路径（使用smart-assistant命名空间）
+          ALIYUN_IMAGE="registry.cn-hangzhou.aliyuncs.com/smart-assistant/${BASE_NAME#*/}"
+          ALIYUN_LATEST="${ALIYUN_IMAGE}:latest"
+          ALIYUN_VERSION="${ALIYUN_IMAGE}:${{ needs.init.outputs.version }}"
+          echo '$ALIYUN_IMAGE'
+          echo '$ALIYUN_LATEST'
+          echo '$ALIYUN_VERSION'
+          # 重新标记镜像
+          docker tag $IMAGE_TAG $ALIYUN_IMAGE
+
+          # 重新标记镜像（版本标签和latest标签）
+          docker tag $IMAGE_TAG $ALIYUN_VERSION
+          docker tag $IMAGE_TAG $ALIYUN_LATEST
+
+          echo docker images
+
   version:
     name: Update version
     needs: ["init", "run_supervisor"]
