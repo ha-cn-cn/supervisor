@@ -215,7 +215,7 @@ jobs:
           docker tag $IMAGE_TAG $ALIYUN_VERSION
           docker tag $IMAGE_TAG $ALIYUN_LATEST
 
-          echo docker images
+          docker images
 
   version:
     name: Update version
